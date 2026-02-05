@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use App\Services\AuthService;
 use App\Http\Resources\UserResource;
+use App\Http\Responses\ApiResponse;
+use Illuminate\Auth\AuthenticationException;
 
 class AuthController extends Controller
 {
@@ -21,22 +23,31 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        $result = $this->authService->login($request->email, $request->password);
-        $user = $result['user']->load(['company', 'branch']);
-        $result['user'] = new UserResource($user);
+        try {
+            $result = $this->authService->login($request->email, $request->password);
+        } catch (AuthenticationException $e) {
+            return ApiResponse::unauthorized('Invalid credentials');
+        }
 
-        return response()->json($result);
+        $user = $result['user']->load(['company', 'branch']);
+        $resource = new UserResource($user);
+
+        return ApiResponse::success([
+            'user' => $resource,
+            'access_token' => $result['access_token'],
+            'token_type' => $result['token_type'],
+        ], 'Login successful');
     }
 
     public function logout(Request $request)
     {
         $this->authService->logout($request->user());
-        return response()->json(['message' => 'Logged out successfully']);
+        return ApiResponse::success(null, 'Logged out successfully');
     }
 
     public function user(Request $request)
     {
         $user = $this->authService->currentUser($request->user())->load(['company', 'branch']);
-        return response()->json(new UserResource($user));
+        return ApiResponse::success(new UserResource($user), 'Current user fetched successfully');
     }
 }

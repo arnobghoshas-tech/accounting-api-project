@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Auth\AuthenticationException;
 
 class AuthService
 {
@@ -13,16 +13,19 @@ class AuthService
         $user = User::where('email', $email)->first();
 
         if (! $user || ! Hash::check($password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials do not match our records.'],
-            ]);
+            throw new AuthenticationException('Invalid credentials');
         }
+
+        $abilities = method_exists($user, 'getAllPermissions')
+            ? $user->getAllPermissions()->pluck('name')->toArray()
+            : [];
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return [
             'access_token' => $token,
             'token_type' => 'Bearer',
+            'abilities' => $abilities,
             'user' => $user,
         ];
     }

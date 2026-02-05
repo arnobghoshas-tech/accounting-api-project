@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Branch\StoreBranchRequest;
 use App\Http\Requests\Branch\UpdateBranchRequest;
 use App\Http\Resources\BranchResource;
+use App\Http\Responses\ApiResponse;
 use App\Services\BranchService;
 use Illuminate\Database\QueryException;
 
@@ -18,51 +19,31 @@ class BranchController extends Controller
     public function index()
     {
         $branches = $this->branchService->index();
-        return response()->json([
-            'success' => true,
-            'data' => BranchResource::collection($branches),
-        ]);
+        return ApiResponse::success(BranchResource::collection($branches), 'Branches fetched successfully');
     }
 
     public function store(StoreBranchRequest $request)
     {
         $branch = $this->branchService->store($request->validated());
-        return response()->json([
-            'success' => true,
-            'message' => 'Branch created successfully',
-            'data' => new BranchResource($branch),
-        ], 201);
+        return ApiResponse::created(new BranchResource($branch), 'Branch created successfully');
     }
 
     public function show(string $id)
     {
         $branch = $this->branchService->show($id);
         if (! $branch) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Branch not found',
-            ], 404);
+            return ApiResponse::notFound('Branch not found');
         }
-        return response()->json([
-            'success' => true,
-            'data' => new BranchResource($branch),
-        ]);
+        return ApiResponse::success(new BranchResource($branch), 'Branch fetched successfully');
     }
 
     public function update(UpdateBranchRequest $request, string $id)
     {
         $branch = $this->branchService->update($id, $request->validated());
         if (! $branch) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Branch not found',
-            ], 404);
+            return ApiResponse::notFound('Branch not found');
         }
-        return response()->json([
-            'success' => true,
-            'message' => 'Branch updated successfully',
-            'data' => new BranchResource($branch),
-        ]);
+        return ApiResponse::success(new BranchResource($branch), 'Branch updated successfully');
     }
 
     public function destroy(string $id)
@@ -70,28 +51,19 @@ class BranchController extends Controller
         try {
             $ok = $this->branchService->destroy($id);
             if (! $ok) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Branch not found',
-                ], 404);
+                return ApiResponse::notFound('Branch not found');
             }
         } catch (QueryException $e) {
             $code = ($e->errorInfo[1] ?? null) === 1451 ? 409 : 500;
             $message = ($code === 409) ? 'Branch is in use and cannot be deleted' : 'Database error';
-            return response()->json([
-                'success' => false,
-                'message' => $message,
-            ], $code);
+            if ($code === 409) {
+                return ApiResponse::conflict($message);
+            }
+            return ApiResponse::serverError($message);
         } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unexpected error',
-            ], 500);
+            return ApiResponse::serverError('Unexpected error occurred');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Branch deleted successfully',
-        ]);
+        return ApiResponse::success(null, 'Branch deleted successfully');
     }
 }

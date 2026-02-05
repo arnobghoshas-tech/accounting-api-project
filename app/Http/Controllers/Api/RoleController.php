@@ -8,6 +8,7 @@ use App\Http\Requests\Role\StoreRoleRequest;
 use App\Http\Requests\Role\UpdateRoleRequest;
 use App\Services\RoleService;
 use App\Http\Resources\RoleResource;
+use App\Http\Responses\ApiResponse;
 
 class RoleController extends Controller
 {
@@ -21,10 +22,7 @@ class RoleController extends Controller
     public function index()
     {
         $roles = $this->roleService->index();
-        return response()->json([
-            'success' => true,
-            'data' => RoleResource::collection($roles)
-        ]);
+        return ApiResponse::success(RoleResource::collection($roles), 'Roles fetched successfully');
     }
 
     /**
@@ -37,11 +35,7 @@ class RoleController extends Controller
             'permissions' => $request->permissions ?? [],
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Role created successfully',
-            'data' => new RoleResource($role)
-        ], 201);
+        return ApiResponse::created(new RoleResource($role), 'Role created successfully');
     }
 
     /**
@@ -52,16 +46,10 @@ class RoleController extends Controller
         $role = $this->roleService->show($id);
 
         if (!$role) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Role not found'
-            ], 404);
+            return ApiResponse::notFound('Role not found');
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => new RoleResource($role)
-        ]);
+        return ApiResponse::success(new RoleResource($role), 'Role fetched successfully');
     }
 
     /**
@@ -75,17 +63,10 @@ class RoleController extends Controller
         ]);
 
         if (!$role) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Role not found'
-            ], 404);
+            return ApiResponse::notFound('Role not found');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Role updated successfully',
-            'data' => new RoleResource($role)
-        ]);
+        return ApiResponse::success(new RoleResource($role), 'Role updated successfully');
     }
 
     /**
@@ -95,15 +76,9 @@ class RoleController extends Controller
     {
         $ok = $this->roleService->destroy($id);
         if (! $ok) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Role not found'
-            ], 404);
+            return ApiResponse::notFound('Role not found');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Role deleted successfully'
-        ]);
+        return ApiResponse::success(null, 'Role deleted successfully');
     }
 }

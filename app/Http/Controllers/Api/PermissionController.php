@@ -8,6 +8,7 @@ use App\Http\Requests\Permission\StorePermissionRequest;
 use App\Http\Requests\Permission\UpdatePermissionRequest;
 use App\Services\PermissionService;
 use App\Http\Resources\PermissionResource;
+use App\Http\Responses\ApiResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -23,10 +24,7 @@ class PermissionController extends Controller
     public function index()
     {
         $permissions = $this->permissionService->index();
-        return response()->json([
-            'success' => true,
-            'data' => PermissionResource::collection($permissions)
-        ]);
+        return ApiResponse::success(PermissionResource::collection($permissions), 'Permissions fetched successfully');
     }
 
     /**
@@ -38,11 +36,7 @@ class PermissionController extends Controller
             'name' => $request->name,
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Permission created successfully',
-            'data' => new PermissionResource($permission)
-        ], 201);
+        return ApiResponse::created(new PermissionResource($permission), 'Permission created successfully');
     }
 
     /**
@@ -53,16 +47,10 @@ class PermissionController extends Controller
         $permission = $this->permissionService->show($id);
 
         if (!$permission) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Permission not found'
-            ], 404);
+            return ApiResponse::notFound('Permission not found');
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => new PermissionResource($permission)
-        ]);
+        return ApiResponse::success(new PermissionResource($permission), 'Permission fetched successfully');
     }
 
     /**
@@ -75,17 +63,10 @@ class PermissionController extends Controller
         ]);
 
         if (!$permission) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Permission not found'
-            ], 404);
+            return ApiResponse::notFound('Permission not found');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Permission updated successfully',
-            'data' => new PermissionResource($permission)
-        ]);
+        return ApiResponse::success(new PermissionResource($permission), 'Permission updated successfully');
     }
 
     /**
@@ -96,33 +77,21 @@ class PermissionController extends Controller
         try {
             $ok = $this->permissionService->destroy($id);
             if (! $ok) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Permission not found'
-                ], 404);
+                return ApiResponse::notFound('Permission not found');
             }
         } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Permission not found'
-            ], 404);
+            return ApiResponse::notFound('Permission not found');
         } catch (QueryException $e) {
             $code = ($e->errorInfo[1] ?? null) === 1451 ? 409 : 500;
             $message = ($code === 409) ? 'Permission is in use and cannot be deleted' : 'Database error';
-            return response()->json([
-                'success' => false,
-                'message' => $message,
-            ], $code);
+            if ($code === 409) {
+                return ApiResponse::conflict($message);
+            }
+            return ApiResponse::serverError($message);
         } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unexpected error',
-            ], 500);
+            return ApiResponse::serverError('Unexpected error occurred');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Permission deleted successfully'
-        ]);
+        return ApiResponse::success(null, 'Permission deleted successfully');
     }
 }

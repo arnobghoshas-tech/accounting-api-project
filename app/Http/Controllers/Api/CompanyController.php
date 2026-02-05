@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\StoreCompanyRequest;
 use App\Http\Requests\Company\UpdateCompanyRequest;
 use App\Http\Resources\CompanyResource;
+use App\Http\Responses\ApiResponse;
 use App\Services\CompanyService;
 use Illuminate\Database\QueryException;
 
@@ -18,51 +19,31 @@ class CompanyController extends Controller
     public function index()
     {
         $companies = $this->companyService->index();
-        return response()->json([
-            'success' => true,
-            'data' => CompanyResource::collection($companies),
-        ]);
+        return ApiResponse::success(CompanyResource::collection($companies), 'Companies fetched successfully');
     }
 
     public function store(StoreCompanyRequest $request)
     {
         $company = $this->companyService->store($request->validated());
-        return response()->json([
-            'success' => true,
-            'message' => 'Company created successfully',
-            'data' => new CompanyResource($company),
-        ], 201);
+        return ApiResponse::created(new CompanyResource($company), 'Company created successfully');
     }
 
     public function show(string $id)
     {
         $company = $this->companyService->show($id);
         if (! $company) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Company not found',
-            ], 404);
+            return ApiResponse::notFound('Company not found');
         }
-        return response()->json([
-            'success' => true,
-            'data' => new CompanyResource($company),
-        ]);
+        return ApiResponse::success(new CompanyResource($company), 'Company fetched successfully');
     }
 
     public function update(UpdateCompanyRequest $request, string $id)
     {
         $company = $this->companyService->update($id, $request->validated());
         if (! $company) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Company not found',
-            ], 404);
+            return ApiResponse::notFound('Company not found');
         }
-        return response()->json([
-            'success' => true,
-            'message' => 'Company updated successfully',
-            'data' => new CompanyResource($company),
-        ]);
+        return ApiResponse::success(new CompanyResource($company), 'Company updated successfully');
     }
 
     public function destroy(string $id)
@@ -70,28 +51,19 @@ class CompanyController extends Controller
         try {
             $ok = $this->companyService->destroy($id);
             if (! $ok) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Company not found',
-                ], 404);
+                return ApiResponse::notFound('Company not found');
             }
         } catch (QueryException $e) {
             $code = ($e->errorInfo[1] ?? null) === 1451 ? 409 : 500;
             $message = ($code === 409) ? 'Company is in use and cannot be deleted' : 'Database error';
-            return response()->json([
-                'success' => false,
-                'message' => $message,
-            ], $code);
+            if ($code === 409) {
+                return ApiResponse::conflict($message);
+            }
+            return ApiResponse::serverError($message);
         } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unexpected error',
-            ], 500);
+            return ApiResponse::serverError('Unexpected error occurred');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Company deleted successfully',
-        ]);
+        return ApiResponse::success(null, 'Company deleted successfully');
     }
 }

@@ -8,6 +8,7 @@ use App\Http\Requests\User\UpdateUserRequest;
 use Illuminate\Http\Request;
 use App\Services\UserService;
 use App\Http\Resources\UserResource;
+use App\Http\Responses\ApiResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 class UserController extends Controller
@@ -22,10 +23,7 @@ class UserController extends Controller
     public function index()
     {
         $users = $this->userService->index();
-        return response()->json([
-            'success' => true,
-            'data' => UserResource::collection($users)
-        ]);
+        return ApiResponse::success(UserResource::collection($users), 'Users fetched successfully');
     }
 
     /**
@@ -37,29 +35,19 @@ class UserController extends Controller
         try {
             $user = $this->userService->store($request->validated(), $request->role);
         } catch (\InvalidArgumentException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 422);
+            return ApiResponse::unprocessable($e->getMessage());
         } catch (QueryException $e) {
             $code = ($e->errorInfo[1] ?? null) === 1062 ? 409 : 500;
             $message = ($code === 409) ? 'Email already exists' : 'Database error';
-            return response()->json([
-                'success' => false,
-                'message' => $message,
-            ], $code);
+            if ($code === 409) {
+                return ApiResponse::conflict($message);
+            }
+            return ApiResponse::serverError($message);
         } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unexpected error',
-            ], 500);
+            return ApiResponse::serverError('Unexpected error occurred');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User created successfully',
-            'data' => new UserResource($user)
-        ], 201);
+        return ApiResponse::created(new UserResource($user), 'User created successfully');
     }
 
     /**
@@ -70,16 +58,10 @@ class UserController extends Controller
         $user = $this->userService->show($id);
 
         if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found'
-            ], 404);
+            return ApiResponse::notFound('User not found');
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => new UserResource($user)
-        ]);
+        return ApiResponse::success(new UserResource($user), 'User fetched successfully');
     }
 
     /**
@@ -90,17 +72,10 @@ class UserController extends Controller
         $user = $this->userService->update($id, $request->validated(), $request->role);
 
         if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found'
-            ], 404);
+            return ApiResponse::notFound('User not found');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User updated successfully',
-            'data' => new UserResource($user)
-        ]);
+        return ApiResponse::success(new UserResource($user), 'User updated successfully');
     }
 
     /**
@@ -110,15 +85,9 @@ class UserController extends Controller
     {
         $ok = $this->userService->destroy($id);
         if (! $ok) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found'
-            ], 404);
+            return ApiResponse::notFound('User not found');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User deleted successfully'
-        ]);
+        return ApiResponse::success(null, 'User deleted successfully');
     }
 }
