@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\CompanyController;
+use App\Http\Controllers\Api\BranchController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -36,6 +38,24 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Permissions Routes
     Route::prefix('permissions')->controller(PermissionController::class)->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::get('/{id}', 'show');
+        Route::put('/{id}', 'update');
+        Route::delete('/{id}', 'destroy');
+    });
+
+    // Companies Routes
+    Route::prefix('companies')->controller(CompanyController::class)->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::get('/{id}', 'show');
+        Route::put('/{id}', 'update');
+        Route::delete('/{id}', 'destroy');
+    });
+
+    // Branches Routes
+    Route::prefix('branches')->controller(BranchController::class)->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::get('/{id}', 'show');
